@@ -17,7 +17,7 @@ services.AddRecluseCrawler();
 var serviceProvider = services.BuildServiceProvider();
 var crawler = serviceProvider.GetService<RecluseCrawler>();
 
-var task = crawler.CrawlAsync(new CrawlTask(new Uri("http://www.ycombinator.com")));
+var task = crawler.CrawlAsync(new CrawlTask(new Uri("http://news.ycombinator.com")));
 
 crawler.Start();
 task.Wait();
