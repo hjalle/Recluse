@@ -1,0 +1,29 @@
+﻿version: '{build}'  
+pull_requests:  
+  do_not_increment_build_number: true
+branches:  
+  only:
+  - master
+nuget:  
+  disable_publish_on_pr: true
+build_script:  
+- ps: .\Build.ps1
+test: off  
+artifacts:  
+- path: .\artifacts\**\*.nupkg
+  name: NuGet
+deploy:  
+- provider: NuGet
+  server: https://www.myget.org/F/hjalle/api/v2/package
+  api_key:
+    secure: L9zkvrdqhKQRdn1tj9qgxT/PVIMvQiq4TXubMuzZ1CG/+oDWUHNAdbgUnVuj853W
+  skip_symbols: true
+  on:
+    branch: master
+- provider: NuGet
+  name: production
+  api_key:
+    secure: Pw8A2ytZ8tkimZ4iitOi1Iupq4kF2YYa6GbIHMuueRkhADIxMV/jF/IZla94dYdn
+  on:
+    branch: master
+    appveyor_repo_tag: true
