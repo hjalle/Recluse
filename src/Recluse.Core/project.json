@@ -10,6 +10,9 @@
     "System.Xml.XPath.XmlDocument": "4.0.1-rc2-23712"
   },
 
+  "packOptions": {
+    "projectUrl": "https://github.com/hjalle/Recluse"
+  },
   "frameworks": {
     "netstandard1.3": {
       "imports": [ "dnxcore50", "netcore45" ]
