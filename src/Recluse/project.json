@@ -1,12 +1,15 @@
 ﻿{
-  "version": "1.0.0-*",
+  "version": "0.1.0-beta-*",
 
   "dependencies": {
     "NETStandard.Library": "1.6.0",
-    "Recluse.Core": "1.0.0-*",
+    "Recluse.Core": "0.1.0-*",
     "Microsoft.Extensions.DependencyInjection": "1.0.0"
   },
 
+  "packOptions": {
+    "projectUrl": "https://github.com/hjalle/Recluse"
+  },
   "frameworks": {
     "netstandard1.6": {
       "imports": [ "dnxcore50", "netcore45" ]

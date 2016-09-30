@@ -1,5 +1,5 @@
 ﻿{
-  "version": "1.0.0-*",
+  "version": "0.1.0-beta-*",
   "buildOptions": {
     "emitEntryPoint": true
   },
@@ -9,7 +9,7 @@
       "type": "platform",
       "version": "1.0.0"
     },
-    "Recluse": "1.0.0-*"
+    "Recluse": "0.1.0-*"
   },
 
   "frameworks": {
