@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Recluse.Core.Document;
@@ -13,17 +11,25 @@ namespace Recluse.Core.Processing
 {
     public class UriProcessor : IUriProcessor
     {
-        private readonly IList<Task<UriFetcher>> _executing = new List<Task<UriFetcher>>();
         private readonly ICrawlTaskRepository _queue;
-        private ConcurrentQueue<ICrawlTask> _workingQueue = new ConcurrentQueue<ICrawlTask>();
-        private bool _isProcessing;
+        private readonly ConcurrentQueue<ICrawlTask> _workingQueue = new ConcurrentQueue<ICrawlTask>();
+        private Semaphore _workerSemaphore;
 
+        private readonly ManualResetEvent _processWork = new ManualResetEvent(false);
+
+        private bool _isFetching;
         private readonly Action<WebDocument> _onDocumentFetched;
+        private readonly EventWaitHandle _waitHandle;
 
+        public bool IsProcessing { get; private set; }
+
+        private readonly ConcurrentDictionary<ICrawlTask, AsyncManualResetEvent> _immidiateCrawls;
+        private readonly ConcurrentDictionary<ICrawlTask, WebDocument> _immidiateCompletedTasks;
+        private Timer _fetchCrawlTaskTimer;
         private ProcessorOptions _options;
         private Thread _processingThread;
-        private Thread _fetchingThread;
 
+        private readonly object _syncLock = new object();
 
         public UriProcessor(ICrawlTaskRepository queue, ICrawlHandler handler)
         {
@@ -34,12 +40,21 @@ namespace Recluse.Core.Processing
             {
                 _onDocumentFetched = handler.OnDocumentFetched;
             }
+            bool createdNew;
+
+            _waitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, "RecluseCrawler", out createdNew);
+            if (!createdNew)
+            {
+                _waitHandle.Set();
+                throw new Exception("Could not create wait handle");
+            }
         }
 
 
         public void SetOptions(ProcessorOptions options)
         {
             _options = options;
+            _workerSemaphore = new Semaphore(_options.MaxConcurrency, _options.MaxConcurrency);
         }
 
         /// <summary>
@@ -47,77 +62,85 @@ namespace Recluse.Core.Processing
         /// </summary>
         public void Start()
         {
-            if (_isProcessing)
-            {
-                throw new InvalidOperationException("Can't Process if already processing");
-            }
-            ThreadStart fetchingThread = () =>
-            {
-                bool isFetching = false;
-                while (_isProcessing)
-                {
-                    if (_workingQueue.Count < _options.LimitBeforeNewFetch)
-                    {
-                        if (!isFetching)
-                        {
-                            var fetchTask = _queue.FetchAsync(_options.MaxAmountToFetch);
-                            isFetching = true;
-                            fetchTask.ContinueWith(taskFetched =>
-                            {
-                                foreach (var item in taskFetched.Result)
-                                {
-                                    _workingQueue.Enqueue(item);
-                                }
-                                isFetching = false;
-                            });
-                        }
-                    }
-                }
-            };
+            var start = new ManualResetEvent(false);
             ThreadStart processingThreadStart = () =>
             {
-                while (_isProcessing)
+
+                bool signaled;
+                lock (_syncLock)
                 {
-                    var completed = _executing.Where(e => e.IsCompleted || e.IsCanceled || e.IsFaulted).ToList();
-                    foreach (var item in completed)
-                    {
-                        if (item.IsCompleted)
-                        {
-                            WorkDone(item.Result.CompletedTask);
-                        }
-                        _executing.Remove(item);
-                    }
-                    if (_workingQueue.Count > 0)
-                    {
-                        var tasksToCreate = Math.Min(_options.MaxConcurrency - _executing.Count, _workingQueue.Count);
-                        for (var i = 0; i < tasksToCreate; i++)
-                        {
-                            ICrawlTask crawlTask;
-                            _workingQueue.TryDequeue(out crawlTask);
-                            if (crawlTask != null)
-                            {
-                                UriFetcher fetcher = new UriFetcher(crawlTask);
-                                var result = fetcher.Fetch();
-                                _executing.Add(result);
-                            }
-                        }
-                    }
+                    IsProcessing = true;
                 }
-                if (_executing != null)
+                start.Set();
+                _fetchCrawlTaskTimer = new Timer(FetchCrawlTasks, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
+                do
                 {
-                    Task.WaitAll(_executing.ToArray());
+                    _processWork.WaitOne();
+                    RunWorkers();
+                    signaled = _waitHandle.WaitOne(0);
+                } while (!signaled);
+                lock (_syncLock)
+                {
+                    IsProcessing = false;
                 }
+
             };
 
 
-            _fetchingThread = new Thread(fetchingThread);
-            _fetchingThread.Start();
             _processingThread = new Thread(processingThreadStart);
             _processingThread.Start();
+            start.WaitOne();
+        }
 
-            _isProcessing = true;
+        private void RunWorkers()
+        {
+            while (_workerSemaphore.WaitOne())
+            {
+                ICrawlTask crawlTask;
+                _workingQueue.TryDequeue(out crawlTask);
+                if (crawlTask != null)
+                {
+                    UriFetcher fetcher = new UriFetcher(crawlTask);
+                    fetcher.Fetch().ContinueWith(data =>
+                    {
+                        if (data.IsCompleted)
+                        {
+                            WorkDone(data.Result.CompletedTask);
+                        }
+                        _workerSemaphore.Release(1);
+                    });
+                }
+                else
+                {
+                    _processWork.Reset();
+                    _workerSemaphore.Release(1);
+                    break;
+                }
+
+            }
+        }
+
+        private void FetchCrawlTasks(object state)
+        {
+            if (_workingQueue.Count < _options.LimitBeforeNewFetch)
+            {
+                if (!_isFetching)
+                {
+                    var fetchTask = _queue.FetchAsync(_options.MaxAmountToFetch);
+                    _isFetching = true;
+                    fetchTask.ContinueWith(taskFetched =>
+                    {
+                        foreach (var item in taskFetched.Result)
+                        {
+                            _workingQueue.Enqueue(item);
+                        }
+                        _isFetching = false;
+                    });
+                }
+            }
 
         }
+
         private void WorkDone(CompletedTask resultCompletedTask)
         {
             if (_immidiateCrawls[resultCompletedTask.Task] != null)
@@ -129,13 +152,11 @@ namespace Recluse.Core.Processing
             _onDocumentFetched(resultCompletedTask.FetchedDocument);
         }
 
-        public bool IsProcessing => _isProcessing;
 
-        private ConcurrentDictionary<ICrawlTask, AsyncManualResetEvent> _immidiateCrawls;
-        private ConcurrentDictionary<ICrawlTask, WebDocument> _immidiateCompletedTasks;
         public async Task<WebDocument> CrawlAsync(ICrawlTask task)
         {
             _workingQueue.Enqueue(task);
+            _processWork.Set();
             var manualEvent = new AsyncManualResetEvent();
             _immidiateCrawls[task] = manualEvent;
             await manualEvent.WaitAsync();
@@ -148,13 +169,18 @@ namespace Recluse.Core.Processing
 
         public void Stop()
         {
-            if (!_isProcessing)
+            _fetchCrawlTaskTimer.Dispose();
+            _waitHandle.Set();
+            _processWork.Set();
+
+            lock (_syncLock)
             {
-                throw new InvalidOperationException("Can't stop if not processing");
+                IsProcessing = false;
             }
-            _isProcessing = false;
-            _fetchingThread.Join();
             _processingThread.Join();
+            _fetchCrawlTaskTimer.Dispose();
+
+
         }
     }
 

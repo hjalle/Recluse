@@ -18,6 +18,9 @@ namespace Recluse
         {
             return _processor.CrawlAsync((task));
         }
+        /// <summary>
+        /// Blocking call to stop crawler. It will complete the working queue.
+        /// </summary>
         public void Stop()
         {
             _processor.Stop();

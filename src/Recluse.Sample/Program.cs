@@ -21,13 +21,14 @@ namespace Recluse.Sample
             var serviceProvider = services.BuildServiceProvider();
             var crawler = serviceProvider.GetService<RecluseCrawler>();
 
-            var task = crawler.CrawlAsync(new CrawlTask(new Uri("http://www.ycombinator.com")));
-
             crawler.Start();
-            task.Wait();
-            WriteDownloadedPage(task.Result);
-            Console.ReadLine();
+            var task = crawler.CrawlAsync(new CrawlTask(new Uri("http://www.ycombinator.com")));
+            var task2 = crawler.CrawlAsync(new CrawlTask(new Uri("http://news.ycombinator.com")));
+
             crawler.Stop();
+            task.Wait();
+            WriteDownloadedPage(task2.Result);
+            Console.ReadLine();
         }
 
         private static void WriteDownloadedPage(WebDocument obj)
