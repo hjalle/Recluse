@@ -7,7 +7,8 @@
     "System.Net.WebHeaderCollection": "4.0.1",
     "HtmlAgilityPack": "1.4.9.5",
     "System.Threading.Thread": "4.0.0-beta-23516",
-    "System.Xml.XPath.XmlDocument": "4.0.1-rc2-*"
+    "System.Xml.XPath.XmlDocument": "4.0.1-rc2-*",
+    "Microsoft.Extensions.DependencyInjection.Abstractions": "1.0.0"
   },
 
   "packOptions": {

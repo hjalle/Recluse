@@ -1,9 +1,10 @@
 ﻿using System;
 using Microsoft.Extensions.DependencyInjection;
+using Recluse.Core;
 using Recluse.Core.Document;
 using Recluse.Core.Handlers;
 using Recluse.Core.Processing;
-using Recluse.Extensions;
+using Recluse.Core.Extensions;
 
 namespace Recluse.Sample
 {
