@@ -9,7 +9,7 @@
       "type": "platform",
       "version": "1.0.0"
     },
-    "Recluse": "0.1.2-*"
+    "Recluse": "0.2.0-*"
   },
 
   "frameworks": {

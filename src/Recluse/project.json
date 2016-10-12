@@ -3,7 +3,7 @@
 
   "dependencies": {
     "NETStandard.Library": "1.6.0",
-    "Recluse.Core": "0.1.2-*",
+    "Recluse.Core": "0.2.0-*",
     "Microsoft.Extensions.DependencyInjection": "1.0.0"
   },
 
