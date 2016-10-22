@@ -1,7 +1,7 @@
 # Recluse
 [![Build status](https://ci.appveyor.com/api/projects/status/f98p4bm9gvxay433/branch/master?svg=true)](https://ci.appveyor.com/project/hjalle/recluse/branch/master)
-[![MyGet CI](https://img.shields.io/myget/hjalle/v/Recluse.svg)](http://myget.org/gallery/hjalle)
-[![NuGet](https://img.shields.io/nuget/v/Recluse.svg)](https://www.nuget.org/packages/Recluse/)
+[![MyGet CI](https://img.shields.io/myget/hjalle/v/Recluse.Core.svg)](http://myget.org/gallery/hjalle)
+[![NuGet](https://img.shields.io/nuget/v/Recluse.Core.svg)](https://www.nuget.org/packages/Recluse.Core/)
 
 
 
