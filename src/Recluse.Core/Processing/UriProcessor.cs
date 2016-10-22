@@ -19,8 +19,7 @@ namespace Recluse.Core.Processing
 
         private bool _isFetching;
         private readonly Action<WebDocument> _onDocumentFetched;
-        private readonly EventWaitHandle _waitHandle;
-
+        private readonly ManualResetEvent _waitHandle;
         public bool IsProcessing { get; private set; }
 
         private readonly ConcurrentDictionary<ICrawlTask, AsyncManualResetEvent> _immidiateCrawls;
@@ -40,14 +39,7 @@ namespace Recluse.Core.Processing
             {
                 _onDocumentFetched = handler.OnDocumentFetched;
             }
-            bool createdNew;
-
-            _waitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, "RecluseCrawler", out createdNew);
-            if (!createdNew)
-            {
-                _waitHandle.Set();
-                throw new Exception("Could not create wait handle");
-            }
+            _waitHandle = new ManualResetEvent(false); 
         }
 
 
